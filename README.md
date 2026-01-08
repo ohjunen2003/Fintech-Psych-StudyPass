@@ -18,7 +18,7 @@
 - ⏰ Freshmen camp overnight to secure spots during exam periods
 - 🤷 Current system: first-come-first-serve (opaque, unfair, inefficient)
 
-**Our Solution:** A transparent, blockchain-based booking system with economic incentives that reduce no-shows by 87.5% through refundable deposits and NFT-based access control.
+**Our Solution:** A transparent, blockchain-based booking system with economic incentives that reduce no-shows by 87.5% through NFT-based access control.
 
 ---
 
@@ -58,7 +58,7 @@
   - ✅ Not expired
   - ✅ Not previously used
   - ✅ Correct room/location
-- Automatic deposit refund on successful scan
+
 
 ### 📊 Analytics Dashboard
 - **Real-time insights** for administrators:
@@ -383,7 +383,7 @@ Frontend will start on **http://localhost:5173**
 #### 5. Check-In at Library
 - Show QR code at library entrance
 - Staff scans using **📱 Scanner** page
-- If valid → **Access Granted** + 0.5 token deposit refunded!
+- If valid → **Access Granted**!
 - If expired/invalid → **Access Denied**
 
 ### For Administrators
@@ -407,7 +407,7 @@ Frontend will start on **http://localhost:5173**
   - Expiry status
   - Previous usage
   - Room matching
-- Automatic deposit refund on first scan
+
 
 ---
 
@@ -449,7 +449,7 @@ GET /api/nft/verify/:nftId
 Response: { success: true, message: "✅ NFT is valid", nft: {...} }
 
 POST /api/nft/scan/:nftId
-Response: { success: true, message: "🎉 Access Granted!", depositRefunded: true }
+Response: { success: true, message: "🎉 Access Granted!" }
 
 GET /api/nft/user/:wallet
 Response: { success: true, bookings: [...] }
@@ -565,7 +565,7 @@ npm run lint
 4. Verify QR code displays
 5. Navigate to Scanner page
 6. Upload the QR code
-7. Verify access granted + deposit refunded
+7. Verify access granted 
 8. Check analytics dashboard updates
 
 ---
@@ -675,7 +675,6 @@ Have questions or found a bug?
 
 **What Works:**
 - ✅ Full booking flow (login → mint → book → scan)
-- ✅ Deposit hold & automatic refund system
 - ✅ QR code generation & scanning
 - ✅ Analytics dashboard with charts
 - ✅ Real-time room availability
