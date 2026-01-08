@@ -196,10 +196,7 @@ const AnalyticsPage = () => {
           <div className="text-sm text-gray-500">Total Bookings</div>
           <div className="text-2xl font-bold">{stats.totalBookings}</div>
         </div>
-        <div className="bg-white p-4 rounded shadow">
-          <div className="text-sm text-gray-500">Total Revenue (tokens)</div>
-          <div className="text-2xl font-bold">{stats.totalRevenue}</div>
-        </div>
+        
         <div className="bg-white p-4 rounded shadow">
           <div className="text-sm text-gray-500">Active Bookings</div>
           <div className="text-2xl font-bold">{stats.activeBookings}</div>

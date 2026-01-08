@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { nftAPI } from '../services/api';
-import { useAuth } from '../hooks/useAuth';
 import jsQR from 'jsqr';
 
 const QRScannerPage = () => {
-  const { user } = useAuth();
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -84,8 +82,8 @@ const QRScannerPage = () => {
       try {
         parsedData = JSON.parse(qrData);
         console.log('✅ Parsed QR data:', parsedData);
-      } catch (e) {
-        console.log('❌ Invalid JSON in QR code');
+      } catch (error) {
+        console.log('❌ Invalid JSON in QR code' + error);
         setScanResult({
           success: false,
           message: 'Invalid QR code format - not valid JSON',
