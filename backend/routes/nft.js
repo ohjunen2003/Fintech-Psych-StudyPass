@@ -34,10 +34,11 @@ router.post("/mint", async (req, res) => {
   }
 
   try {
-    // Burn tokens
+    // 🔥 BURN StudyTokens (permanent destruction)
+    console.log(`🔥 Burning ${tokensToSpend} StudyTokens from ${wallet}`);
     tokenBalances[wallet] -= tokensToSpend;
 
-    // Mint NFT
+    // ⚡ MINT NFT Seat Pass (1:1 exchange)
     const seatData = {
       roomId,
       roomName: room.name,
@@ -152,6 +153,33 @@ router.get("/history/:wallet", (req, res) => {
       duration: `${nft.duration}min`,
       status: nft.status,
       tokensSpent: nft.tokensSpent
+    }))
+  });
+});
+
+// Add the /user/:wallet route that the frontend expects
+router.get("/user/:wallet", (req, res) => {
+  const wallet = req.params.wallet;
+  const { getStudentBookings, mintedNFTs } = require("../utils/nftMinter");
+  
+  const bookingIds = getStudentBookings(wallet);
+  const bookings = bookingIds.map(id => mintedNFTs[id]).filter(Boolean);
+
+  res.json({
+    success: true,
+    wallet,
+    totalBookings: bookings.length,
+    bookings: bookings.map(nft => ({
+      nftId: nft.nftId,
+      id: nft.nftId,
+      room: nft.roomName,
+      roomName: nft.roomName,
+      date: new Date(nft.bookedAt).toLocaleDateString(),
+      bookedAt: nft.bookedAt,
+      duration: `${nft.duration}min`,
+      status: nft.status,
+      tokensSpent: nft.tokensSpent,
+      expiresAt: nft.expiresAt
     }))
   });
 });

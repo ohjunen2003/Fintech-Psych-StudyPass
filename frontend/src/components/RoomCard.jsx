@@ -1,7 +1,12 @@
 import React from 'react';
 
 const RoomCard = ({ room, onBookNow }) => {
-  const occupancyPercentage = Math.round((room.occupancy / room.capacity) * 100);
+  // Use backend data structure
+  const occupancyPercentage = room.occupancyPercent || 0;
+  const totalSeats = room.totalSeats || 0;
+  const occupiedSeats = room.occupiedSeats || 0;
+  const availableSeats = room.availableSeats || (totalSeats - occupiedSeats);
+  
   const isHighDemand = occupancyPercentage > 70;
   const isMediumDemand = occupancyPercentage > 40;
 
@@ -28,8 +33,8 @@ const RoomCard = ({ room, onBookNow }) => {
           </div>
           <div className="text-right">
             <div className="flex items-center space-x-1">
-              <span className="text-2xl font-bold text-blue-600">{room.price}</span>
-              <span className="text-sm">{getPriceIndicator()}</span>
+              <span className="text-2xl font-bold text-blue-600">{room.currentPrice || room.basePrice || 1}</span>
+              <span className="text-sm">{room.priceChange || getPriceIndicator()}</span>
             </div>
             <p className="text-xs text-gray-500">StudyTokens/hour</p>
           </div>
@@ -37,7 +42,7 @@ const RoomCard = ({ room, onBookNow }) => {
 
         {/* Room Features */}
         <div className="flex flex-wrap gap-2 mb-4">
-          {room.features?.map((feature, index) => (
+          {room.facilities?.map((feature, index) => (
             <span
               key={index}
               className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
@@ -68,18 +73,18 @@ const RoomCard = ({ room, onBookNow }) => {
           </div>
           
           <div className="flex justify-between text-xs text-gray-500 mt-1">
-            <span>{room.occupancy}/{room.capacity} occupied</span>
-            <span>{room.capacity - room.occupancy} available</span>
+            <span>{occupiedSeats}/{totalSeats} occupied</span>
+            <span>{availableSeats} available</span>
           </div>
         </div>
 
         {/* Additional Info */}
         <div className="grid grid-cols-2 gap-4 text-sm text-gray-600 mb-4">
           <div>
-            <span className="font-medium">Capacity:</span> {room.capacity} seats
+            <span className="font-medium">Capacity:</span> {totalSeats} seats
           </div>
           <div>
-            <span className="font-medium">Type:</span> {room.type}
+            <span className="font-medium">Type:</span> {room.status || 'Study Space'}
           </div>
         </div>
 
@@ -87,13 +92,13 @@ const RoomCard = ({ room, onBookNow }) => {
         <button
           onClick={() => onBookNow(room)}
           className={`w-full py-3 rounded-lg font-medium transition-colors ${
-            room.capacity - room.occupancy > 0
+            availableSeats > 0
               ? 'bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}
-          disabled={room.capacity - room.occupancy <= 0}
+          disabled={availableSeats <= 0}
         >
-          {room.capacity - room.occupancy > 0 ? 'Book Now' : 'Fully Booked'}
+          {availableSeats > 0 ? 'Book Now' : 'Fully Booked'}
         </button>
       </div>
     </div>

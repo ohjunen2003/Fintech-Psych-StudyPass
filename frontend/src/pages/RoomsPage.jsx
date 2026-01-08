@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { seatsAPI } from '../services/api';
+import { seatsAPI, tokensAPI } from '../services/api';
 import RoomCard from '../components/RoomCard';
 import BookingForm from '../components/BookingForm';
 import QRCode from '../components/QRCode';
 
 const RoomsPage = () => {
   const [rooms, setRooms] = useState([]);
+  const [balance, setBalance] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [sortBy, setSortBy] = useState('price'); // 'price', 'occupancy', 'name'
@@ -20,7 +21,22 @@ const RoomsPage = () => {
 
   useEffect(() => {
     loadRooms();
+    loadBalance();
   }, []);
+
+  const loadBalance = async () => {
+    try {
+      if (user?.wallet) {
+        const response = await tokensAPI.getBalance(user.wallet);
+        if (response.data.success) {
+          setBalance(response.data.studyTokenBalance || response.data.balance || 0);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading balance:', error);
+      setBalance(0);
+    }
+  };
 
   const loadRooms = async () => {
     try {
@@ -45,13 +61,9 @@ const RoomsPage = () => {
     
     switch (sortBy) {
       case 'price':
-        return sorted.sort((a, b) => a.price - b.price);
+        return sorted.sort((a, b) => (a.currentPrice || a.basePrice || 1) - (b.currentPrice || b.basePrice || 1));
       case 'occupancy':
-        return sorted.sort((a, b) => {
-          const aOccupancy = (a.occupancy / a.capacity) * 100;
-          const bOccupancy = (b.occupancy / b.capacity) * 100;
-          return aOccupancy - bOccupancy;
-        });
+        return sorted.sort((a, b) => (a.occupancyPercent || 0) - (b.occupancyPercent || 0));
       case 'name':
         return sorted.sort((a, b) => a.name.localeCompare(b.name));
       default:
@@ -68,8 +80,9 @@ const RoomsPage = () => {
     setBookedNFT(nft);
     setShowBookingForm(false);
     setShowQRCode(true);
-    // Refresh rooms to update occupancy
+    // Refresh rooms and balance to update occupancy and token count
     loadRooms();
+    loadBalance();
   };
 
   const handleCloseBookingForm = () => {
@@ -89,7 +102,7 @@ const RoomsPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading study rooms...</p>
@@ -99,7 +112,7 @@ const RoomsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
@@ -132,7 +145,7 @@ const RoomsPage = () => {
         </div>
 
         {/* User Balance */}
-        <div className="bg-gradient-to-r from-green-500 to-blue-600 rounded-2xl shadow-lg p-4 mb-6 text-white">
+        <div className="bg-linear-to-r from-green-500 to-blue-600 rounded-2xl shadow-lg p-4 mb-6 text-white">
           <div className="flex justify-between items-center">
             <div>
               <p className="opacity-90">Welcome, {user?.matricId}</p>
@@ -140,7 +153,7 @@ const RoomsPage = () => {
             </div>
             <div className="text-right">
               <p className="text-sm opacity-90">StudyTokens</p>
-              <p className="text-2xl font-bold">Loading...</p>
+              <p className="text-2xl font-bold">{balance !== null ? balance : 'Loading...'}</p>
             </div>
           </div>
         </div>
@@ -250,7 +263,7 @@ const RoomsPage = () => {
         {/* QR Code Modal */}
         {showQRCode && bookedNFT && (
           <QRCode
-            nftId={bookedNFT.id}
+            nft={bookedNFT}
             onClose={handleCloseQRCode}
           />
         )}

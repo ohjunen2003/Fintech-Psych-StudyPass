@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { nftAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import jsQR from 'jsqr';
 
 const QRScannerPage = () => {
   const { user } = useAuth();
@@ -9,6 +10,29 @@ const QRScannerPage = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   const [error, setError] = useState('');
+
+  // Function to decode QR code from image file
+  const decodeQRFromFile = (file) => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        
+        resolve(code ? code.data : null);
+      };
+      
+      img.onerror = () => resolve(null);
+      img.src = URL.createObjectURL(file);
+    });
+  };
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
@@ -32,38 +56,60 @@ const QRScannerPage = () => {
     setError('');
 
     try {
-      // Simulate QR code reading (in a real app, you'd use a QR code library)
-      // For demo purposes, we'll extract NFT ID from filename or use a mock
-      const mockNftId = 'nft_demo_123'; // In reality, this would come from QR decoding
+      // Decode QR code from image
+      const qrData = await decodeQRFromFile(selectedFile);
+      
+      if (!qrData) {
+        setError('No valid QR code found in the image');
+        setIsScanning(false);
+        return;
+      }
+
+      // Parse QR data
+      let parsedData;
+      try {
+        parsedData = JSON.parse(qrData);
+      } catch (e) {
+        setError('Invalid QR code format');
+        setIsScanning(false);
+        return;
+      }
+
+      if (parsedData.type !== 'studypass-nft' || !parsedData.nftId) {
+        setError('This is not a valid StudyPass NFT QR code');
+        setIsScanning(false);
+        return;
+      }
       
       // Verify the NFT first
-      const verifyResponse = await nftAPI.verifyNFT(mockNftId);
+      const verifyResponse = await nftAPI.verifyNFT(parsedData.nftId);
       
       if (verifyResponse.data.success) {
         // Now scan/use the NFT
-        const scanResponse = await nftAPI.scanNFT(mockNftId);
+        const scanResponse = await nftAPI.scanNFT(parsedData.nftId);
         
         if (scanResponse.data.success) {
           setScanResult({
             success: true,
-            nftId: mockNftId,
-            roomName: scanResponse.data.roomName || 'Study Room',
-            message: 'Access Granted! Welcome to your study space.',
+            nftId: parsedData.nftId,
+            roomName: scanResponse.data.details?.room || parsedData.room || 'Study Room',
+            message: scanResponse.data.message || 'Access Granted! Welcome to your study space.',
+            details: scanResponse.data.details,
             timestamp: new Date().toISOString()
           });
         } else {
           setScanResult({
             success: false,
-            nftId: mockNftId,
-            message: scanResponse.data.message || 'Access Denied',
+            nftId: parsedData.nftId,
+            message: scanResponse.data.error || 'Access Denied',
             timestamp: new Date().toISOString()
           });
         }
       } else {
         setScanResult({
           success: false,
-          nftId: mockNftId,
-          message: verifyResponse.data.message || 'Invalid QR Code',
+          nftId: parsedData.nftId,
+          message: verifyResponse.data.error || 'Invalid QR Code',
           timestamp: new Date().toISOString()
         });
       }

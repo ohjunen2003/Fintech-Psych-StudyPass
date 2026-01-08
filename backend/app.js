@@ -15,7 +15,7 @@ app.use((req, res, next) => {
 
 // Routes
 const authRouter = require("./routes/auth");
-const { router: tokensRouter } = require("./routes/tokens");
+const { router: tokensRouter, STUDY_TOKEN_ID, ISSUER_WALLET } = require("./routes/tokens");
 const seatsRouter = require("./routes/seats");
 const nftRouter = require("./routes/nft");
 const xrplInfoRouter = require("./routes/xrpl-info");

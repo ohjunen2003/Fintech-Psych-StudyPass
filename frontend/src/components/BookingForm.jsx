@@ -16,22 +16,24 @@ const BookingForm = ({ room, onBookingSuccess, onClose }) => {
     try {
       // Check if user has enough tokens
       const balanceResponse = await tokensAPI.getBalance(user.wallet);
-      const currentBalance = balanceResponse.data.balance;
-      const totalCost = room.price * duration;
+      const currentBalance = balanceResponse.data.studyTokenBalance || balanceResponse.data.balance || 0;
+      const roomPrice = room.currentPrice || room.basePrice || room.price || 1;
+      const totalCost = roomPrice * duration;
 
       if (currentBalance < totalCost) {
-        setError(`Insufficient tokens. Need ${totalCost}, have ${currentBalance}`);
+        setError(`❌ Insufficient StudyTokens. Need ${totalCost}, have ${currentBalance}`);
         setIsLoading(false);
         return;
       }
 
-      // Mint NFT (this will automatically burn the required tokens)
-      const response = await nftAPI.mintNFT(user.wallet, room.id, duration);
+      // 🔥 Burn StudyTokens → Mint NFT (this will automatically burn the required tokens)
+      const durationMinutes = duration * 60; // Convert hours to minutes
+      const response = await nftAPI.mintNFT(user.wallet, room.id, durationMinutes, totalCost);
       
       if (response.data.success) {
         onBookingSuccess(response.data.nft);
       } else {
-        setError(response.data.message || 'Booking failed');
+        setError(`❌ Booking failed: ${response.data.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Booking error:', error);
@@ -41,7 +43,8 @@ const BookingForm = ({ room, onBookingSuccess, onClose }) => {
     }
   };
 
-  const totalCost = room.price * duration;
+  const roomPrice = room.currentPrice || room.basePrice || room.price || 1;
+  const totalCost = roomPrice * duration;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -73,14 +76,23 @@ const BookingForm = ({ room, onBookingSuccess, onClose }) => {
             </select>
           </div>
 
+          <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-md">
+            <h4 className="text-sm font-medium text-yellow-800 mb-2">🔥 Token Burn Process:</h4>
+            <div className="text-sm text-yellow-700 space-y-1">
+              <p>1. Your {totalCost} StudyTokens will be <strong>permanently burned</strong></p>
+              <p>2. In return, you'll receive a <strong>unique NFT seat pass</strong></p>
+              <p>3. NFT grants access for exactly <strong>{duration} hour{duration !== 1 ? 's' : ''}</strong></p>
+            </div>
+          </div>
+          
           <div className="bg-gray-50 p-3 rounded-md">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Price per hour:</span>
-              <span className="font-medium">{room.price} ST</span>
+              <span className="text-sm text-gray-600">StudyTokens to burn:</span>
+              <span className="font-medium text-red-600">{totalCost} ST</span>
             </div>
             <div className="flex justify-between items-center font-bold text-lg mt-2">
-              <span>Total Cost:</span>
-              <span className="text-blue-600">{totalCost} ST</span>
+              <span>You'll receive:</span>
+              <span className="text-blue-600">1 NFT Seat Pass</span>
             </div>
           </div>
 

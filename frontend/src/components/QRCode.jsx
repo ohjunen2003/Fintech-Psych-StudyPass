@@ -1,20 +1,44 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import QRCodeLib from 'qrcode';
 
-const QRCode = ({ nftId, onClose }) => {
+const QRCode = ({ nft, onClose }) => {
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [timeRemaining, setTimeRemaining] = useState(0);
-  const [expiryTime, setExpiryTime] = useState(null);
+
+  // Calculate expiry time from NFT data (no setState in effect needed)
+  const expiryTime = useMemo(() => {
+    return nft.expiresAt ? new Date(nft.expiresAt) : null;
+  }, [nft.expiresAt]);
 
   useEffect(() => {
-    // Generate QR code URL using QR code API
-    const qrData = JSON.stringify({ nftId, type: 'seat-pass' });
-    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`;
-    setQrCodeUrl(qrApiUrl);
+    const generateQRCode = async () => {
+      try {
+        // Create QR data with NFT information
+        const qrData = JSON.stringify({ 
+          nftId: nft.nftId || nft.id,
+          type: 'studypass-nft',
+          room: nft.roomName || nft.room,
+          expiresAt: nft.expiresAt
+        });
+        
+        // Generate QR code as data URL
+        const qrDataUrl = await QRCodeLib.toDataURL(qrData, {
+          width: 200,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          }
+        });
+        
+        setQrCodeUrl(qrDataUrl);
+      } catch (error) {
+        console.error('QR code generation failed:', error);
+      }
+    };
 
-    // Set expiry time (assuming 4 hours from now for demo)
-    const expiry = new Date(Date.now() + 4 * 60 * 60 * 1000);
-    setExpiryTime(expiry);
-  }, [nftId]);
+    generateQRCode();
+  }, [nft]);
 
   useEffect(() => {
     if (!expiryTime) return;
@@ -43,7 +67,12 @@ const QRCode = ({ nftId, onClose }) => {
   };
 
   const copyToClipboard = () => {
-    const qrData = JSON.stringify({ nftId, type: 'seat-pass' });
+    const qrData = JSON.stringify({ 
+      nftId: nft.nftId || nft.id,
+      type: 'studypass-nft',
+      room: nft.roomName || nft.room,
+      expiresAt: nft.expiresAt
+    });
     navigator.clipboard.writeText(qrData);
     alert('QR code data copied to clipboard!');
   };
@@ -64,8 +93,12 @@ const QRCode = ({ nftId, onClose }) => {
         <div className="space-y-4">
           <div className="bg-gray-50 p-4 rounded-lg">
             <p className="text-sm text-gray-600 mb-2">NFT ID:</p>
-            <p className="font-mono text-sm bg-white p-2 rounded border break-all">
-              {nftId}
+            <p className="font-mono text-xs bg-white p-2 rounded border break-all">
+              {nft.nftId || nft.id}
+            </p>
+            <p className="text-sm text-gray-600 mt-2 mb-1">Room:</p>
+            <p className="font-semibold text-sm">
+              {nft.roomName || nft.room}
             </p>
           </div>
 

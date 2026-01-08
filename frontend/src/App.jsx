@@ -6,6 +6,7 @@ import TokensPage from './pages/TokensPage';
 import RoomsPage from './pages/RoomsPage';
 import MyBookingsPage from './pages/MyBookingsPage';
 import QRScannerPage from './pages/QRScannerPage';
+import TestQRPage from './pages/TestQRPage';
 import Navigation from './components/Navigation';
 import { testAPI } from './services/api';
 import './App.css';
@@ -124,6 +125,9 @@ function App() {
         <Routes>
           {/* Test route for Phase 1 */}
           <Route path="/test" element={<TestComponent />} />
+          
+          {/* QR Test Page */}
+          <Route path="/test-qr" element={<TestQRPage />} />
           
           {/* Login route */}
           <Route path="/" element={<LoginPage />} />

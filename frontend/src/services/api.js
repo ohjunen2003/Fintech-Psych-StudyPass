@@ -18,21 +18,57 @@ export const testAPI = {
 
 // Tokens API
 export const tokensAPI = {
-  mintTokens: async (wallet, amount) => {
+  convertRLUSD: async (wallet, rlusdAmount) => {
     try {
-      const response = await api.post('/tokens/mint', { wallet, amount });
+      const response = await api.post('/tokens/mint', { wallet, rlusdAmount });
       return response;
     } catch (error) {
       throw error;
     }
   },
   
+  // Legacy method for backward compatibility
+  mintTokens: async (wallet, rlusdAmount) => {
+    return tokensAPI.convertRLUSD(wallet, rlusdAmount);
+  },
+  
   getBalance: async (wallet) => {
     try {
-      const response = await api.get(`/tokens/balance/${wallet}`);
-      return response;
+      // Get both RLUSD and StudyToken balances
+      const [rlusdResponse, studyTokenResponse] = await Promise.all([
+        api.get(`/tokens/balance/rlusd/${wallet}`),
+        api.get(`/tokens/balance/studytoken/${wallet}`)
+      ]);
+      
+      // Combine the responses
+      return {
+        data: {
+          success: true,
+          wallet,
+          rlusdBalance: rlusdResponse.data.balance || 0,
+          studyTokenBalance: studyTokenResponse.data.balance || 0,
+          balance: studyTokenResponse.data.balance || 0, // Legacy compatibility
+          conversionRate: 2,
+          currencies: {
+            RLUSD: rlusdResponse.data,
+            StudyToken: studyTokenResponse.data
+          }
+        }
+      };
     } catch (error) {
-      throw error;
+      console.error('Error fetching balances:', error);
+      // Return fallback data if API calls fail
+      return {
+        data: {
+          success: false,
+          wallet,
+          rlusdBalance: 0,
+          studyTokenBalance: 0,
+          balance: 0,
+          conversionRate: 2,
+          error: 'Failed to load balances'
+        }
+      };
     }
   },
   
@@ -69,9 +105,14 @@ export const seatsAPI = {
 
 // NFT API
 export const nftAPI = {
-  mintNFT: async (wallet, roomId, duration) => {
+  mintNFT: async (wallet, roomId, durationMinutes, tokensToSpend) => {
     try {
-      const response = await api.post('/nft/mint', { wallet, roomId, duration });
+      const response = await api.post('/nft/mint', { 
+        wallet, 
+        roomId, 
+        durationMinutes, 
+        tokensToSpend 
+      });
       return response;
     } catch (error) {
       throw error;
