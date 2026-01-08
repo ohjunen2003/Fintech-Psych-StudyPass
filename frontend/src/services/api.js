@@ -108,9 +108,13 @@ export const nftAPI = {
 
 // Analytics API
 export const analyticsAPI = {
-  getDashboard: async () => {
+  getDashboard: async (opts = {}) => {
     try {
-      const response = await api.get('/analytics/dashboard');
+      const { start, end } = opts;
+      const params = {};
+      if (start) params.start = start;
+      if (end) params.end = end;
+      const response = await api.get('/analytics/dashboard', { params });
       return response;
     } catch (error) {
       throw error;

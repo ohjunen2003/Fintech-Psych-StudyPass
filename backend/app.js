@@ -18,15 +18,15 @@ const authRouter = require("./routes/auth");
 const { router: tokensRouter } = require("./routes/tokens");
 const seatsRouter = require("./routes/seats");
 const nftRouter = require("./routes/nft");
-const xrplInfoRouter = require("./routes/xrpl-info");
 const analyticsRouter = require("./routes/analytics");
+const xrplInfoRouter = require("./routes/xrpl-info");
 
 app.use("/api/auth", authRouter);
 app.use("/api/tokens", tokensRouter);
 app.use("/api/seats", seatsRouter);
 app.use("/api/nft", nftRouter);
-app.use("/api/xrpl", xrplInfoRouter);
 app.use("/api/analytics", analyticsRouter);
+app.use("/api/xrpl", xrplInfoRouter);
 
 // Health check with all endpoints
 app.get("/health", (req, res) => {

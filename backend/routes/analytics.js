@@ -5,7 +5,17 @@ const { roomsDB } = require("../models/Seat");
 const router = express.Router();
 
 router.get("/dashboard", (req, res) => {
-  const nfts = Object.values(mintedNFTs);
+  const { start, end } = req.query;
+  let nfts = Object.values(mintedNFTs);
+  // If date filters provided, filter by bookedAt timestamp (ms)
+  if (start || end) {
+    const startTs = start ? Date.parse(start) : 0;
+    const endTs = end ? Date.parse(end) + 24*60*60*1000 - 1 : Infinity; // inclusive end of day
+    nfts = nfts.filter(n => {
+      const t = typeof n.bookedAt === 'number' ? n.bookedAt : Date.parse(n.bookedAt || 0);
+      return t >= startTs && t <= endTs;
+    });
+  }
   const totalTokens = Object.values(tokenBalances).reduce((sum, bal) => sum + bal, 0);
   
   // Calculate stats
@@ -26,10 +36,16 @@ router.get("/dashboard", (req, res) => {
   res.json({
     success: true,
     stats,
-    rooms: Object.values(roomsDB).map(room => ({
-      ...room,
-      occupancyPercent: Math.round((room.occupiedSeats / room.totalSeats) * 100)
-    }))
+    rooms: Object.values(roomsDB).map(room => {
+      const bookingsForRoom = nfts.filter(n => n.room === room.id || n.room === room.roomId || n.room === room.name);
+      const revenue = bookingsForRoom.reduce((s, b) => s + (b.tokensSpent || 0), 0);
+      return {
+        ...room,
+        occupancyPercent: Math.round((room.occupiedSeats / room.totalSeats) * 100),
+        bookings: bookingsForRoom.length,
+        revenue
+      };
+    })
   });
 });
 
