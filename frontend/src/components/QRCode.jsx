@@ -66,6 +66,19 @@ const QRCode = ({ nft, onClose }) => {
     return `${hours}h ${minutes}m ${seconds}s`;
   };
 
+  const getValidityStatus = () => {
+    // Check NFT status first
+    if (nft.status === 'USED') return 'Already Used';
+    if (nft.status === 'EXPIRED') return 'Expired';
+    
+    // Then check time remaining
+    if (timeRemaining > 0) {
+      return formatTime(timeRemaining);
+    } else {
+      return 'Expired';
+    }
+  };
+
   const copyToClipboard = () => {
     const qrData = JSON.stringify({ 
       nftId: nft.nftId || nft.id,
@@ -117,7 +130,7 @@ const QRCode = ({ nft, onClose }) => {
 
           <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
             <p className="text-sm font-medium text-blue-800">
-              ⏱️ Valid for: {timeRemaining > 0 ? formatTime(timeRemaining) : 'Expired'}
+              ⏱️ Valid for: {getValidityStatus()}
             </p>
           </div>
 

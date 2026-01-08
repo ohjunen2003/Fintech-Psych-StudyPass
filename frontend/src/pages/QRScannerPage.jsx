@@ -47,8 +47,15 @@ const QRScannerPage = () => {
   };
 
   const processQRCode = async () => {
+    console.log('🔍 Starting QR code processing...');
+    
     if (!selectedFile) {
-      setError('Please select an image file first');
+      console.log('❌ No file selected');
+      setScanResult({
+        success: false,
+        message: 'Please select an image file first',
+        timestamp: new Date().toISOString()
+      });
       return;
     }
 
@@ -56,37 +63,57 @@ const QRScannerPage = () => {
     setError('');
 
     try {
-      // Decode QR code from image
+      console.log('📸 Decoding QR from file...');
       const qrData = await decodeQRFromFile(selectedFile);
       
       if (!qrData) {
-        setError('No valid QR code found in the image');
+        console.log('❌ No QR code found in image');
+        setScanResult({
+          success: false,
+          message: 'No valid QR code found in the image',
+          timestamp: new Date().toISOString()
+        });
         setIsScanning(false);
         return;
       }
+
+      console.log('📋 QR Data found:', qrData);
 
       // Parse QR data
       let parsedData;
       try {
         parsedData = JSON.parse(qrData);
+        console.log('✅ Parsed QR data:', parsedData);
       } catch (e) {
-        setError('Invalid QR code format');
+        console.log('❌ Invalid JSON in QR code');
+        setScanResult({
+          success: false,
+          message: 'Invalid QR code format - not valid JSON',
+          timestamp: new Date().toISOString()
+        });
         setIsScanning(false);
         return;
       }
 
       if (parsedData.type !== 'studypass-nft' || !parsedData.nftId) {
-        setError('This is not a valid StudyPass NFT QR code');
+        console.log('❌ Not a StudyPass NFT QR code');
+        setScanResult({
+          success: false,
+          message: 'This is not a valid StudyPass NFT QR code',
+          timestamp: new Date().toISOString()
+        });
         setIsScanning(false);
         return;
       }
       
-      // Verify the NFT first
+      console.log('🔍 Verifying NFT:', parsedData.nftId);
       const verifyResponse = await nftAPI.verifyNFT(parsedData.nftId);
+      console.log('📋 Verify response:', verifyResponse.data);
       
       if (verifyResponse.data.success) {
-        // Now scan/use the NFT
+        console.log('✅ NFT is valid, proceeding to scan...');
         const scanResponse = await nftAPI.scanNFT(parsedData.nftId);
+        console.log('📋 Scan response:', scanResponse.data);
         
         if (scanResponse.data.success) {
           setScanResult({
@@ -101,21 +128,27 @@ const QRScannerPage = () => {
           setScanResult({
             success: false,
             nftId: parsedData.nftId,
-            message: scanResponse.data.error || 'Access Denied',
+            message: scanResponse.data.error || scanResponse.data.message || 'Access Denied',
             timestamp: new Date().toISOString()
           });
         }
       } else {
+        console.log('❌ NFT verification failed:', verifyResponse.data.error);
         setScanResult({
           success: false,
           nftId: parsedData.nftId,
-          message: verifyResponse.data.error || 'Invalid QR Code',
+          message: verifyResponse.data.error || verifyResponse.data.message || 'Invalid QR Code',
           timestamp: new Date().toISOString()
         });
       }
+      
     } catch (error) {
-      console.error('QR scanning error:', error);
-      setError(error.response?.data?.message || 'Failed to process QR code');
+      console.error('💥 QR scanning error:', error);
+      setScanResult({
+        success: false,
+        message: error.response?.data?.error || error.response?.data?.message || `Error: ${error.message}`,
+        timestamp: new Date().toISOString()
+      });
     } finally {
       setIsScanning(false);
     }

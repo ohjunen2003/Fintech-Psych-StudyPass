@@ -46,7 +46,7 @@ const MyBookingsPage = () => {
   };
 
   const handleShowQR = (booking) => {
-    setSelectedNFT(booking.nftId);
+    setSelectedNFT(booking); // Pass the full booking object
     setShowQR(true);
   };
 
@@ -164,7 +164,7 @@ const MyBookingsPage = () => {
         
         {showQR && selectedNFT && (
           <QRCode 
-            nftId={selectedNFT}
+            nft={selectedNFT}
             onClose={() => {
               setShowQR(false);
               setSelectedNFT(null);

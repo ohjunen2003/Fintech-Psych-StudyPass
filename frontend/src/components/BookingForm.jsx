@@ -31,7 +31,9 @@ const BookingForm = ({ room, onBookingSuccess, onClose }) => {
       const response = await nftAPI.mintNFT(user.wallet, room.id, durationMinutes, totalCost);
       
       if (response.data.success) {
-        onBookingSuccess(response.data.nft);
+        // Pass the metadata from the NFT response
+        const nftData = response.data.nft.metadata || response.data.nft;
+        onBookingSuccess(nftData);
       } else {
         setError(`❌ Booking failed: ${response.data.message || 'Unknown error'}`);
       }
