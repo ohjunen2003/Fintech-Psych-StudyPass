@@ -1,8 +1,35 @@
-# Environment variables
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment
 .env
 .env.local
 .env.*.local
 
-# Optional: Also ignore other env files
-file.env
-*.env
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+.DS_Store?
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Builds
+dist/
+build/
+coverage/
+.nyc_output
+
+# Runtime
+.next/
+out/
