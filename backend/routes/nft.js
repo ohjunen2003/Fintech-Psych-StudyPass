@@ -2,22 +2,28 @@ const express = require("express");
 const { mintSeatNFT, getNFT, verifyNFT, markNFTAsUsed } = require("../utils/nftMinter");
 const { tokenBalances } = require("./tokens");
 const { roomsDB } = require("../models/Seat");
+const { DEPOSIT_AMOUNT } = require("./deposits");
 const router = express.Router();
 
 router.post("/mint", async (req, res) => {
-  const { wallet, roomId, durationMinutes, tokensToSpend } = req.body;
+  const { wallet, roomId, durationMinutes, tokensToSpend, includeDeposit = true } = req.body;
 
   // Validation
   if (!wallet || !roomId || !durationMinutes || !tokensToSpend) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
+  // Calculate total cost (booking fee + deposit)
+  const totalCost = includeDeposit ? tokensToSpend + DEPOSIT_AMOUNT : tokensToSpend;
+
   // Check token balance
   const currentBalance = tokenBalances[wallet] || 0;
-  if (currentBalance < tokensToSpend) {
+  if (currentBalance < totalCost) {
     return res.status(400).json({ 
       error: "Insufficient tokens",
-      required: tokensToSpend,
+      required: totalCost,
+      bookingFee: tokensToSpend,
+      deposit: includeDeposit ? DEPOSIT_AMOUNT : 0,
       balance: currentBalance
     });
   }
@@ -34,9 +40,23 @@ router.post("/mint", async (req, res) => {
   }
 
   try {
-    // 🔥 BURN StudyTokens (permanent destruction)
+    // 🔥 BURN StudyTokens for booking fee
     console.log(`🔥 Burning ${tokensToSpend} StudyTokens from ${wallet}`);
     tokenBalances[wallet] -= tokensToSpend;
+
+    // 💰 Hold deposit if enabled
+    let depositHeld = false;
+    const ADMIN_WALLET = process.env.ADMIN_WALLET || "rAdminWalletAddress123";
+    
+    if (includeDeposit) {
+      tokenBalances[wallet] -= DEPOSIT_AMOUNT;
+      if (!tokenBalances[ADMIN_WALLET]) {
+        tokenBalances[ADMIN_WALLET] = 0;
+      }
+      tokenBalances[ADMIN_WALLET] += DEPOSIT_AMOUNT;
+      depositHeld = true;
+      console.log(`💰 Holding ${DEPOSIT_AMOUNT} token deposit from ${wallet}`);
+    }
 
     // ⚡ MINT NFT Seat Pass (1:1 exchange)
     const seatData = {
@@ -44,7 +64,9 @@ router.post("/mint", async (req, res) => {
       roomName: room.name,
       durationMinutes,
       tokensUsed: tokensToSpend,
-      bookedAt: Date.now()
+      bookedAt: Date.now(),
+      depositHeld: depositHeld,
+      depositAmount: depositHeld ? DEPOSIT_AMOUNT : 0
     };
 
     const nftResult = await mintSeatNFT(wallet, seatData);
@@ -53,10 +75,24 @@ router.post("/mint", async (req, res) => {
       // Update room occupancy (simulate booking)
       room.occupiedSeats += 1;
 
+      // Track deposit if held
+      if (depositHeld) {
+        const { deposits } = require("./deposits");
+        deposits[nftResult.nftId] = {
+          wallet,
+          amount: DEPOSIT_AMOUNT,
+          status: "held",
+          heldAt: Date.now(),
+          bookingId: nftResult.nftId
+        };
+      }
+
       res.json({
         success: true,
         nft: nftResult,
         tokensBurned: tokensToSpend,
+        depositHeld: depositHeld,
+        depositAmount: depositHeld ? DEPOSIT_AMOUNT : 0,
         remainingBalance: tokenBalances[wallet],
         room: {
           name: room.name,
@@ -64,13 +100,23 @@ router.post("/mint", async (req, res) => {
         }
       });
     } else {
-      // Refund tokens if NFT minting failed
+      // Refund tokens AND deposit if NFT minting failed
       tokenBalances[wallet] += tokensToSpend;
+      if (depositHeld) {
+        tokenBalances[wallet] += DEPOSIT_AMOUNT;
+        tokenBalances[ADMIN_WALLET] -= DEPOSIT_AMOUNT;
+      }
       res.status(500).json({ error: nftResult.error });
     }
   } catch (error) {
-    // Refund tokens on error
+    // Refund tokens AND deposit on error
     tokenBalances[wallet] += tokensToSpend;
+    if (includeDeposit) {
+      tokenBalances[wallet] += DEPOSIT_AMOUNT;
+      if (tokenBalances[ADMIN_WALLET]) {
+        tokenBalances[ADMIN_WALLET] -= DEPOSIT_AMOUNT;
+      }
+    }
     res.status(500).json({ error: error.message });
   }
 });
@@ -123,14 +169,36 @@ router.post("/scan/:nftId", (req, res) => {
   }
 
   const nft = verification.nft;
+
+  // ✅ RELEASE DEPOSIT (User showed up!)
+  const { deposits } = require("./deposits");
+  const deposit = deposits[nftId];
+  let depositRefunded = false;
+
+  if (deposit && deposit.status === "held") {
+    const ADMIN_WALLET = process.env.ADMIN_WALLET || "rAdminWalletAddress123";
+    
+    // Return deposit from admin to user
+    tokenBalances[ADMIN_WALLET] -= deposit.amount;
+    tokenBalances[nft.studentWallet] += deposit.amount;
+    
+    deposit.status = "released";
+    deposit.releasedAt = Date.now();
+    depositRefunded = true;
+    
+    console.log(`✅ Deposit released: ${deposit.amount} tokens returned to ${nft.studentWallet}`);
+  }
+
   res.json({
     success: true,
     message: "🎉 Access Granted!",
+    depositRefunded,
     details: {
       room: nft.roomName,
       student: nft.studentWallet.substring(0, 10) + "...",
       validUntil: new Date(nft.expiresAt).toLocaleTimeString(),
-      scannedAt: new Date().toLocaleTimeString()
+      scannedAt: new Date().toLocaleTimeString(),
+      depositReturned: depositRefunded ? deposit.amount : 0
     }
   });
 });

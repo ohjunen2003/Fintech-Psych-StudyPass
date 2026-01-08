@@ -20,6 +20,7 @@ const seatsRouter = require("./routes/seats");
 const nftRouter = require("./routes/nft");
 const analyticsRouter = require("./routes/analytics");
 const xrplInfoRouter = require("./routes/xrpl-info");
+const { router: depositsRouter } = require("./routes/deposits");
 
 app.use("/api/auth", authRouter);
 app.use("/api/tokens", tokensRouter);
@@ -27,6 +28,7 @@ app.use("/api/seats", seatsRouter);
 app.use("/api/nft", nftRouter);
 app.use("/api/analytics", analyticsRouter);
 app.use("/api/xrpl", xrplInfoRouter);
+app.use("/api/deposits", depositsRouter);
 
 // Health check with all endpoints
 app.get("/health", (req, res) => {
@@ -46,7 +48,15 @@ app.get("/health", (req, res) => {
         "GET /api/nft/history/:wallet"
       ],
       xrpl: ["GET /api/xrpl/balance/:address", "GET /api/xrpl/account/:address"],
-      analytics: ["GET /api/analytics/dashboard"]
+      analytics: ["GET /api/analytics/dashboard"],
+      deposits: [
+        "POST /api/deposits/hold",
+        "POST /api/deposits/release",
+        "POST /api/deposits/forfeit",
+        "GET /api/deposits/:bookingId",
+        "GET /api/deposits/wallet/:wallet",
+        "GET /api/deposits/admin/stats"
+      ]
     }
   });
 });

@@ -79,24 +79,6 @@ const LoginPage = () => {
             >
               A1234567Z
             </button>
-            <button
-              onClick={() => handleQuickLogin('A2345678Y')}
-              className="text-xs bg-gray-100 text-gray-700 px-3 py-2 rounded hover:bg-gray-200 transition-colors"
-            >
-              A2345678Y
-            </button>
-            <button
-              onClick={() => handleQuickLogin('A3456789X')}
-              className="text-xs bg-gray-100 text-gray-700 px-3 py-2 rounded hover:bg-gray-200 transition-colors"
-            >
-              A3456789X
-            </button>
-            <button
-              onClick={() => handleQuickLogin('A4567890W')}
-              className="text-xs bg-gray-100 text-gray-700 px-3 py-2 rounded hover:bg-gray-200 transition-colors"
-            >
-              A4567890W
-            </button>
           </div>
         </div>
       </div>
