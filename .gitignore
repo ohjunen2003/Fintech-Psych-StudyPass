@@ -1,0 +1,8 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Optional: Also ignore other env files
+file.env
+*.env
