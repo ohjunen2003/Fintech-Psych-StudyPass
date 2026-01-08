@@ -6,6 +6,7 @@ const Navigation = () => {
   const location = useLocation();
 
   const navItems = [
+    { path: '/analytics', label: 'Analytics', icon: '📊' },
     { path: '/tokens', label: 'Tokens', icon: '💰' },
     { path: '/rooms', label: 'Rooms', icon: '🏫' },
     { path: '/bookings', label: 'My Bookings', icon: '📋' },

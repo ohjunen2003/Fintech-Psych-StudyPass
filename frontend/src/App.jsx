@@ -6,7 +6,11 @@ import TokensPage from './pages/TokensPage';
 import RoomsPage from './pages/RoomsPage';
 import MyBookingsPage from './pages/MyBookingsPage';
 import QRScannerPage from './pages/QRScannerPage';
+<<<<<<< HEAD
 import TestQRPage from './pages/TestQRPage';
+=======
+import AnalyticsPage from './pages/AnalyticsPage';
+>>>>>>> origin/feature/phase6
 import Navigation from './components/Navigation';
 import { testAPI } from './services/api';
 import './App.css';
@@ -165,6 +169,14 @@ function App() {
                 <QRScannerPage />
               </ProtectedRoute>
             } 
+          />
+          <Route 
+            path="/analytics"
+            element={
+              <ProtectedRoute>
+                <AnalyticsPage />
+              </ProtectedRoute>
+            }
           />
           
           {/* Catch all - redirect to login */}
