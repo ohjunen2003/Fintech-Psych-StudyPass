@@ -163,4 +163,18 @@ export const analyticsAPI = {
   }
 };
 
+// AMM API - Pricing endpoint
+export const ammAPI = {
+  getPrice: async (amountIn, token) => {
+    try {
+      const response = await api.get('/amm/price', {
+        params: { amountIn, token }
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+};
+
 export default api;

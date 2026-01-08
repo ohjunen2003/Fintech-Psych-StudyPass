@@ -4,6 +4,7 @@ const { initXRPL } = require("./utils/xrpl");
 require("dotenv").config();
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
@@ -20,6 +21,7 @@ const seatsRouter = require("./routes/seats");
 const nftRouter = require("./routes/nft");
 const analyticsRouter = require("./routes/analytics");
 const xrplInfoRouter = require("./routes/xrpl-info");
+const ammRouter = require("./routes/amm");
 
 app.use("/api/auth", authRouter);
 app.use("/api/tokens", tokensRouter);
@@ -27,11 +29,12 @@ app.use("/api/seats", seatsRouter);
 app.use("/api/nft", nftRouter);
 app.use("/api/analytics", analyticsRouter);
 app.use("/api/xrpl", xrplInfoRouter);
+app.use("/api/amm", ammRouter);
 
 // Health check with all endpoints
 app.get("/health", (req, res) => {
-  res.json({ 
-    status: "✅ StudyPass Backend Healthy", 
+  res.json({
+    status: "✅ StudyPass Backend Healthy",
     timestamp: new Date().toISOString(),
     xrpl: "Connected to testnet",
     version: "1.0.0",
@@ -41,12 +44,13 @@ app.get("/health", (req, res) => {
       seats: ["GET /api/seats/browse", "GET /api/seats/room/:roomId"],
       nft: [
         "POST /api/nft/mint",
-        "GET /api/nft/verify/:nftId", 
+        "GET /api/nft/verify/:nftId",
         "POST /api/nft/scan/:nftId",
         "GET /api/nft/history/:wallet"
       ],
       xrpl: ["GET /api/xrpl/balance/:address", "GET /api/xrpl/account/:address"],
-      analytics: ["GET /api/analytics/dashboard"]
+      analytics: ["GET /api/analytics/dashboard"],
+      amm: ["GET /api/amm/price?amountIn=100&token=USD"]
     }
   });
 });
@@ -59,7 +63,7 @@ app.get("/api/health", (req, res) => {
 // 404 handler
 // 404 handler - catch all unmatched routes
 app.use((req, res) => {
-  res.status(404).json({ 
+  res.status(404).json({
     error: "Endpoint not found",
     requestedPath: req.originalUrl,
     availableEndpoints: "/health for full API documentation"

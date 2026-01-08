@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { tokensAPI } from '../services/api';
+import { tokensAPI, ammAPI } from '../services/api';
 
 const TokensPage = () => {
   const [studyTokenBalance, setStudyTokenBalance] = useState(null);
   const [rlusdBalance, setRLUSDBalance] = useState(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
   const [rlusdAmount, setRLUSDAmount] = useState(10);
+  const [ammPrice, setAmmPrice] = useState(null);
+  const [isLoadingPrice, setIsLoadingPrice] = useState(false);
   const [conversionRate, setConversionRate] = useState(2);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -20,6 +22,27 @@ const TokensPage = () => {
       loadBalance();
     }
   }, [user]);
+
+  useEffect(() => {
+    // Fetch AMM price whenever amount changes
+    if (rlusdAmount > 0) {
+      fetchAMMPrice();
+    }
+  }, [rlusdAmount]);
+
+  const fetchAMMPrice = async () => {
+    try {
+      setIsLoadingPrice(true);
+      const response = await ammAPI.getPrice(rlusdAmount, 'USD');
+      if (response.data.success) {
+        setAmmPrice(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching AMM price:', error);
+    } finally {
+      setIsLoadingPrice(false);
+    }
+  };
 
   const loadBalance = async () => {
     try {
@@ -44,26 +67,37 @@ const TokensPage = () => {
 
   const handleConvertRLUSD = async () => {
     if (!user) return;
-    
     setIsLoading(true);
     setError('');
     setSuccess('');
 
     try {
-      const response = await tokensAPI.convertRLUSD(user.wallet, rlusdAmount);
-      
-      if (response.data.success) {
-        setSuccess(`✅ Converted ${response.data.rlusdSpent} RLUSD → ${response.data.studyTokensMinted} StudyTokens!`);
-        await loadBalance(); // Refresh balances
+      // Call AMM swap endpoint instead of old conversion
+      const response = await fetch('http://localhost:3001/api/amm/swap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fromToken: 'USD',
+          amount: rlusdAmount,
+          userWallet: user.wallet
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSuccess(`✅ Swapped ${rlusdAmount} USD through AMM! TX: ${data.txHash.slice(0, 8)}...`);
+        await loadBalance();
+        await fetchAMMPrice(); // Refresh to see pool change
       } else {
-        setError(response.data.error || 'Conversion failed');
+        setError(data.error || 'Swap failed');
       }
     } catch (error) {
-      setError(error.response?.data?.error || 'Network error occurred');
+      setError(error.message || 'Network error occurred');
     }
-    
     setIsLoading(false);
   };
+
 
   const handleLogout = () => {
     logout();
@@ -135,43 +169,56 @@ const TokensPage = () => {
 
         {/* Convert RLUSD to StudyTokens */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">💱 Convert RLUSD → StudyTokens</h2>
-          
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-            <div className="flex items-center space-x-2 mb-2">
-              <span className="text-blue-800 font-medium">🔄 Conversion Rate:</span>
-              <span className="text-blue-900 font-bold">1 RLUSD = {conversionRate} StudyTokens</span>
-            </div>
-            <div className="text-blue-700 text-sm space-y-1">
-              <p>💡 <strong>Real XRPL Testnet Integration:</strong></p>
-              <p>• RLUSD is stable (1:1 USD) on XRPL</p>
-              <p>• StudyTokens are MPTs (Multi-Purpose Tokens)</p>
-              <p>• Trading disabled: RequireAuth | CanFreeze | CanClawback</p>
-              <p>• Network: <code className="bg-blue-100 px-1 rounded">wss://s.altnet.rippletest.net:51233</code></p>
-            </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">💱 Swap with AMM Pricing</h2>
+
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+            <p className="text-purple-900 font-semibold">Real XRPL AMM Integration</p>
+            <p className="text-purple-700 text-sm">Dynamic pricing via constant-product formula (USD ↔ STK)</p>
           </div>
-          
+
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                RLUSD Amount to Convert
+                USD Amount
               </label>
               <div className="relative">
                 <input
                   type="number"
                   value={rlusdAmount}
-                  onChange={(e) => setRLUSDAmount(Math.max(1, parseFloat(e.target.value) || 1))}
-                  min="1"
-                  max={rlusdBalance || 100}
-                  step="0.5"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-16"
+                  onChange={(e) => setRLUSDAmount(Math.max(0.1, parseFloat(e.target.value) || 0))}
+                  min="0.1"
+                  step="0.1"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-16"
                 />
-                <span className="absolute right-3 top-2 text-gray-500 text-sm">RLUSD</span>
+                <span className="absolute right-3 top-2 text-gray-500 text-sm">USD</span>
               </div>
-              <p className="text-sm text-gray-600 mt-1">
-                Will receive: <strong>{(rlusdAmount * conversionRate).toFixed(1)} StudyTokens</strong>
-              </p>
             </div>
+
+            {/* AMM Pricing Display */}
+            {isLoadingPrice ? (
+              <div className="bg-gray-50 p-4 rounded-lg text-center text-gray-600">
+                ⏳ Fetching live price...
+              </div>
+            ) : ammPrice ? (
+              <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-600">Output Amount</p>
+                    <p className="font-bold text-lg text-gray-900">{ammPrice.output.amount.toFixed(2)} {ammPrice.output.token}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Execution Price</p>
+                    <p className="font-bold text-lg text-gray-900">{ammPrice.pricing.executionPrice}</p>
+                  </div>
+                </div>
+                <div className="border-t pt-2">
+                  <p className="text-xs text-gray-600">Price Impact</p>
+                  <p className={`font-semibold ${ammPrice.pricing.priceImpact.includes('-') ? 'text-green-600' : 'text-orange-600'}`}>
+                    {ammPrice.pricing.priceImpact}
+                  </p>
+                </div>
+              </div>
+            ) : null}
 
             {error && (
               <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg border border-red-200">
@@ -188,14 +235,14 @@ const TokensPage = () => {
             <button
               onClick={handleConvertRLUSD}
               disabled={isLoading || !rlusdBalance || rlusdAmount > rlusdBalance}
-              className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+              className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
             >
-              {isLoading ? 'Converting...' : `🔄 Convert ${rlusdAmount} RLUSD → ${(rlusdAmount * conversionRate).toFixed(1)} StudyTokens`}
+              {isLoading ? 'Converting...' : `Swap ${rlusdAmount} USD → ${ammPrice ? ammPrice.output.amount.toFixed(2) : '?'} STK`}
             </button>
 
-            <div className="text-xs text-gray-500 text-center space-y-1">
-              <p>🔒 StudyTokens are Multi-Purpose Tokens (MPTs) with trading disabled</p>
-              <p>📖 Only usable for booking study spaces, prevents speculation</p>
+            <div className="text-xs text-gray-500 text-center">
+              <p>📊 Real on-chain AMM with dynamic pricing</p>
+              <p>🔗 Settlement on XRPL testnet</p>
             </div>
           </div>
         </div>
